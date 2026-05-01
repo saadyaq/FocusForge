@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
-import { Clock3, History, Settings as SettingsIcon } from "lucide-react";
+import { Clock3, History, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { AppShell } from "./components/Layout/AppShell";
 import { TimerPanel } from "./components/Timer/TimerPanel";
 import { SettingsPanel } from "./components/Timer/SettingsPanel";
 import { useSettings } from "./hooks/useSettings";
 import { useSessions } from "./hooks/useSessions";
 import { useTimer } from "./hooks/useTimer";
+import { DashboardPage } from "./pages/Dashboard";
 import { HistoryPage } from "./pages/History";
 
-type View = "focus" | "history" | "settings";
+type View = "focus" | "dashboard" | "history" | "settings";
 
 export default function App() {
   const [activeView, setActiveView] = useState<View>("focus");
@@ -20,6 +21,7 @@ export default function App() {
   const navItems = useMemo(
     () => [
       { id: "focus", label: "Focus", icon: Clock3, active: activeView === "focus" },
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, active: activeView === "dashboard" },
       { id: "history", label: "History", icon: History, active: activeView === "history" },
       { id: "settings", label: "Settings", icon: SettingsIcon, active: activeView === "settings" }
     ],
@@ -28,7 +30,9 @@ export default function App() {
 
   return (
     <AppShell navItems={navItems} onNavigate={(view) => setActiveView(view as View)}>
-      {activeView === "history" ? (
+      {activeView === "dashboard" ? (
+        <DashboardPage sessions={sessions} />
+      ) : activeView === "history" ? (
         <HistoryPage sessions={sessions} tags={tags} onClear={clearSessions} />
       ) : (
         <main

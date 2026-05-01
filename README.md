@@ -19,6 +19,7 @@ FocusForge is a minimal desktop app for planning and running deep work sessions.
 - Local settings persistence
 - Session tags and completed-session history
 - History filters by date and tag
+- Dashboard with today stats, completion rate, weekly trend, and time by tag
 - Light, dark, and system theme modes
 
 ## Development
@@ -55,6 +56,5 @@ npm run tauri:build
 
 ## Roadmap
 
-- Add dashboard analytics
 - Add native desktop notifications
 - Add release packaging assets
