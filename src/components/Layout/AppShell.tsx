@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 interface NavItem {
+  id: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
@@ -10,9 +11,10 @@ interface NavItem {
 interface AppShellProps {
   children: ReactNode;
   navItems: NavItem[];
+  onNavigate: (id: string) => void;
 }
 
-export function AppShell({ children, navItems }: AppShellProps) {
+export function AppShell({ children, navItems, onNavigate }: AppShellProps) {
   return (
     <div className="min-h-screen bg-forge-paper text-forge-ink antialiased dark:bg-[#111210] dark:text-[#f5f1e8]">
       <div className="flex min-h-screen">
@@ -31,6 +33,7 @@ export function AppShell({ children, navItems }: AppShellProps) {
                     : "text-[#6f6b60] hover:bg-black/5 hover:text-forge-ink dark:text-[#a9a398] dark:hover:bg-white/10 dark:hover:text-white"
                 }`}
                 title={item.label}
+                onClick={() => onNavigate(item.id)}
                 type="button"
               >
                 <item.icon size={19} strokeWidth={2} />
@@ -49,6 +52,24 @@ export function AppShell({ children, navItems }: AppShellProps) {
               Desktop MVP
             </div>
           </header>
+
+          <nav className="mx-5 mb-4 flex rounded-lg border border-forge-line bg-white p-1 dark:border-white/10 dark:bg-white/[0.04] md:hidden">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-semibold transition ${
+                  item.active
+                    ? "bg-forge-accent text-white"
+                    : "text-[#6f6b60] hover:bg-forge-paper hover:text-forge-ink dark:text-[#a9a398] dark:hover:bg-white/10 dark:hover:text-white"
+                }`}
+                onClick={() => onNavigate(item.id)}
+                type="button"
+              >
+                <item.icon size={16} />
+                {item.label}
+              </button>
+            ))}
+          </nav>
 
           {children}
         </div>

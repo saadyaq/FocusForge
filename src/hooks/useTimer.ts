@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Settings, TimerMode, TimerStatus } from "../types";
+import type { Session, Settings, TimerMode, TimerStatus } from "../types";
+
+interface UseTimerOptions {
+  tag: string;
+  onSessionComplete: (session: Session) => void;
+}
 
 const modeLabels: Record<TimerMode, string> = {
   focus: "Focus",
@@ -29,12 +34,21 @@ export function formatTime(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
-export function useTimer(settings: Settings) {
+function createSessionId() {
+  if ("crypto" in window && "randomUUID" in window.crypto) {
+    return window.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTimerOptions) {
   const [mode, setMode] = useState<TimerMode>("focus");
   const [status, setStatus] = useState<TimerStatus>("idle");
   const [completedFocusCycles, setCompletedFocusCycles] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(() => durationForMode(settings, "focus"));
   const intervalRef = useRef<number | null>(null);
+  const startedAtRef = useRef<string | null>(null);
 
   const currentDuration = useMemo(() => durationForMode(settings, mode), [mode, settings]);
   const progress = currentDuration === 0 ? 0 : 1 - remainingSeconds / currentDuration;
@@ -59,6 +73,22 @@ export function useTimer(settings: Settings) {
   const completeCurrentMode = useCallback(() => {
     setStatus("completed");
 
+    if (mode === "focus" && startedAtRef.current) {
+      const endedAt = new Date().toISOString();
+
+      onSessionComplete({
+        id: createSessionId(),
+        tag: tag.trim() || "Deep work",
+        mode,
+        durationMinutes: settings.focusDuration,
+        completed: true,
+        startedAt: startedAtRef.current,
+        endedAt
+      });
+    }
+
+    startedAtRef.current = null;
+
     setCompletedFocusCycles((currentCycles) => {
       const nextMode = getNextMode(mode, currentCycles, settings);
       const nextCycles = mode === "focus" ? currentCycles + 1 : currentCycles;
@@ -66,10 +96,13 @@ export function useTimer(settings: Settings) {
       window.setTimeout(() => moveToMode(nextMode), 650);
       return nextCycles;
     });
-  }, [mode, moveToMode, settings]);
+  }, [mode, moveToMode, onSessionComplete, settings, tag]);
 
   const start = useCallback(() => {
     if (status === "running") return;
+    if (!startedAtRef.current) {
+      startedAtRef.current = new Date().toISOString();
+    }
     setStatus("running");
   }, [status]);
 
@@ -81,6 +114,7 @@ export function useTimer(settings: Settings) {
 
   const reset = useCallback(() => {
     clearTimer();
+    startedAtRef.current = null;
     setStatus("idle");
     setRemainingSeconds(durationForMode(settings, mode));
   }, [clearTimer, mode, settings]);
@@ -90,6 +124,7 @@ export function useTimer(settings: Settings) {
     if (mode === "focus") {
       setCompletedFocusCycles((cycles) => cycles + 1);
     }
+    startedAtRef.current = null;
     moveToMode(nextMode);
   }, [completedFocusCycles, mode, moveToMode, settings]);
 
