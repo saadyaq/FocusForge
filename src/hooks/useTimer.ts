@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { notifyTimerComplete } from "../services/notifications";
 import type { Session, Settings, TimerMode, TimerStatus } from "../types";
 
 interface UseTimerOptions {
@@ -93,6 +94,7 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
       const nextMode = getNextMode(mode, currentCycles, settings);
       const nextCycles = mode === "focus" ? currentCycles + 1 : currentCycles;
 
+      void notifyTimerComplete(settings, mode, nextMode);
       window.setTimeout(() => moveToMode(nextMode), 650);
       return nextCycles;
     });

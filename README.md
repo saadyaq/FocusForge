@@ -8,7 +8,7 @@ FocusForge is a minimal desktop app for planning and running deep work sessions.
 - React
 - TypeScript
 - Tailwind CSS
-- Recharts, planned for dashboard analytics
+- Recharts
 
 ## Current Features
 
@@ -20,6 +20,8 @@ FocusForge is a minimal desktop app for planning and running deep work sessions.
 - Session tags and completed-session history
 - History filters by date and tag
 - Dashboard with today stats, completion rate, weekly trend, and time by tag
+- Native desktop notifications for session transitions
+- Optional completion sound
 - Light, dark, and system theme modes
 
 ## Development
@@ -56,5 +58,5 @@ npm run tauri:build
 
 ## Roadmap
 
-- Add native desktop notifications
+- Add SQLite-backed persistence
 - Add release packaging assets
