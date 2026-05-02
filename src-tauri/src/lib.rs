@@ -1,7 +1,10 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 use tauri::{
     menu::MenuBuilder,
     tray::TrayIconBuilder,
     Manager,
+    RunEvent,
     WindowEvent,
 };
 
@@ -9,6 +12,10 @@ const MAIN_WINDOW_LABEL: &str = "main";
 const MENU_SHOW: &str = "show";
 const MENU_HIDE: &str = "hide";
 const MENU_QUIT: &str = "quit";
+
+struct AppState {
+    allow_quit: AtomicBool,
+}
 
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
@@ -21,6 +28,9 @@ fn show_main_window(app: &tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(AppState {
+            allow_quit: AtomicBool::new(false),
+        })
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let tray_menu = MenuBuilder::new(app)
@@ -49,7 +59,12 @@ pub fn run() {
                             let _ = window.hide();
                         }
                     }
-                    MENU_QUIT => app.exit(0),
+                    MENU_QUIT => {
+                        app.state::<AppState>()
+                            .allow_quit
+                            .store(true, Ordering::SeqCst);
+                        app.exit(0);
+                    }
                     _ => {}
                 })
                 .build(app)?;
@@ -64,6 +79,22 @@ pub fn run() {
                 }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running FocusForge");
+        .build(tauri::generate_context!())
+        .expect("error while running FocusForge")
+        .run(|app, event| {
+            if let RunEvent::ExitRequested { api, .. } = event {
+                let should_quit = app
+                    .state::<AppState>()
+                    .allow_quit
+                    .load(Ordering::SeqCst);
+
+                if !should_quit {
+                    api.prevent_exit();
+                    show_main_window(app);
+                    if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+                        let _ = window.hide();
+                    }
+                }
+            }
+        });
 }
