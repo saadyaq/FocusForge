@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { FocusForgeLogo } from "../Brand/FocusForgeLogo";
 
 interface NavItem {
   id: string;
@@ -19,9 +20,7 @@ export function AppShell({ children, navItems, onNavigate }: AppShellProps) {
     <div className="min-h-screen bg-forge-paper text-forge-ink antialiased dark:bg-[#111210] dark:text-[#f5f1e8]">
       <div className="flex min-h-screen">
         <aside className="hidden w-20 shrink-0 border-r border-forge-line/80 bg-white/70 px-3 py-5 dark:border-white/10 dark:bg-white/[0.03] md:block">
-          <div className="mb-8 flex h-11 w-11 items-center justify-center rounded-lg bg-forge-ink text-sm font-semibold text-white dark:bg-[#f5f1e8] dark:text-[#141412]">
-            FF
-          </div>
+          <FocusForgeLogo showWordmark={false} className="mb-8" />
 
           <nav className="space-y-2">
             {navItems.map((item) => (
@@ -44,9 +43,11 @@ export function AppShell({ children, navItems, onNavigate }: AppShellProps) {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex items-center justify-between px-5 py-5">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-forge-accent">FocusForge</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-normal">Build better focus</h1>
+            <div className="flex min-w-0 items-center gap-4">
+              <FocusForgeLogo className="shrink-0" />
+              <div className="hidden min-w-0 sm:block">
+                <h1 className="text-2xl font-semibold tracking-normal">Build better focus</h1>
+              </div>
             </div>
             <div className="rounded-lg border border-forge-line bg-white px-3 py-2 text-sm text-[#6f6b60] dark:border-white/10 dark:bg-white/[0.04] dark:text-[#bbb4a6]">
               Desktop MVP

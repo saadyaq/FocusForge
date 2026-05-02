@@ -39,6 +39,7 @@ pub fn run() {
                 .menu(&tray_menu)
                 .icon(tray_icon)
                 .icon_as_template(true)
+                .title("FF")
                 .tooltip("FocusForge")
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id().as_ref() {
