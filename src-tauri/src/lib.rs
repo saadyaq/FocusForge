@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::{
+    image::Image,
     menu::MenuBuilder,
     tray::TrayIconBuilder,
     Manager,
@@ -40,16 +41,12 @@ pub fn run() {
                 .text(MENU_QUIT, "Quitter FocusForge")
                 .build()?;
 
-            let tray_icon = app
-                .default_window_icon()
-                .cloned()
-                .expect("FocusForge should have a bundled tray icon");
+            let tray_icon = Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?;
 
             TrayIconBuilder::with_id("focusforge-tray")
                 .menu(&tray_menu)
                 .icon(tray_icon)
                 .icon_as_template(true)
-                .title("FF")
                 .tooltip("FocusForge")
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id().as_ref() {
