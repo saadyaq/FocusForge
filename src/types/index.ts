@@ -2,6 +2,18 @@ export type TimerMode = "focus" | "short_break" | "long_break";
 
 export type TimerStatus = "idle" | "running" | "paused" | "completed";
 
+export interface TimerSnapshot {
+  mode: TimerMode;
+  modeLabel: string;
+  status: TimerStatus;
+  remainingSeconds: number;
+  formattedTime: string;
+  progress: number;
+  periodLabel: string;
+  periodIndex: number;
+  totalPeriods: number;
+}
+
 export interface Settings {
   focusDuration: number;
   shortBreakDuration: number;

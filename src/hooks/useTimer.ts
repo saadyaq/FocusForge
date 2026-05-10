@@ -53,12 +53,18 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
   const [completedFocusCycles, setCompletedFocusCycles] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(() => durationForMode(settings, "focus"));
   const intervalRef = useRef<number | null>(null);
+  const deadlineRef = useRef<number | null>(null);
+  const remainingSecondsRef = useRef(remainingSeconds);
   const startedAtRef = useRef<string | null>(null);
   const inSessionBreakRef = useRef(false);
   const inSessionBreakTakenRef = useRef(false);
 
   const currentDuration = useMemo(() => durationForMode(settings, mode), [mode, settings]);
   const progress = currentDuration === 0 ? 0 : 1 - remainingSeconds / currentDuration;
+
+  useEffect(() => {
+    remainingSecondsRef.current = remainingSeconds;
+  }, [remainingSeconds]);
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -67,16 +73,26 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
     }
   }, []);
 
+  const getDeadlineRemainingSeconds = useCallback(() => {
+    if (!deadlineRef.current) return remainingSecondsRef.current;
+
+    return Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000));
+  }, []);
+
   const moveToMode = useCallback(
     (nextMode: TimerMode, options: { autoStart?: boolean } = {}) => {
       clearTimer();
       inSessionBreakRef.current = false;
       inSessionBreakTakenRef.current = false;
+      deadlineRef.current = null;
+
+      const nextDuration = durationForMode(settings, nextMode);
       setMode(nextMode);
-      setRemainingSeconds(durationForMode(settings, nextMode));
+      setRemainingSeconds(nextDuration);
       setStatus(options.autoStart ? "running" : "idle");
 
       if (options.autoStart) {
+        deadlineRef.current = Date.now() + nextDuration * 1000;
         startedAtRef.current = new Date().toISOString();
       }
     },
@@ -97,11 +113,12 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
     });
   }, [onSessionComplete, settings.focusDuration, tag]);
 
-  const startInSessionBreak = useCallback(() => {
+  const startInSessionBreak = useCallback((breakRemainingSeconds: number) => {
     clearTimer();
     inSessionBreakRef.current = true;
     inSessionBreakTakenRef.current = true;
     setMode("short_break");
+    setRemainingSeconds(breakRemainingSeconds);
     setStatus("running");
     void notifyInSessionBreak(settings);
   }, [clearTimer, settings]);
@@ -113,6 +130,7 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
       saveFocusSession();
       inSessionBreakRef.current = false;
       inSessionBreakTakenRef.current = false;
+      deadlineRef.current = null;
       startedAtRef.current = null;
 
       setCompletedFocusCycles((currentCycles) => {
@@ -128,6 +146,7 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
     }
 
     startedAtRef.current = null;
+    deadlineRef.current = null;
 
     setCompletedFocusCycles((currentCycles) => {
       const nextMode = getNextMode(mode, currentCycles, settings);
@@ -144,18 +163,22 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
     if (!startedAtRef.current) {
       startedAtRef.current = new Date().toISOString();
     }
+    deadlineRef.current = Date.now() + remainingSeconds * 1000;
     setStatus("running");
-  }, [status]);
+  }, [remainingSeconds, status]);
 
   const pause = useCallback(() => {
     if (status !== "running") return;
+    setRemainingSeconds(getDeadlineRemainingSeconds());
+    deadlineRef.current = null;
     setStatus("paused");
     clearTimer();
-  }, [clearTimer, status]);
+  }, [clearTimer, getDeadlineRemainingSeconds, status]);
 
   const reset = useCallback(() => {
     clearTimer();
     startedAtRef.current = null;
+    deadlineRef.current = null;
     inSessionBreakRef.current = false;
     inSessionBreakTakenRef.current = false;
     setStatus("idle");
@@ -173,6 +196,7 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
       setCompletedFocusCycles((cycles) => cycles + 1);
     }
     startedAtRef.current = null;
+    deadlineRef.current = null;
     inSessionBreakRef.current = false;
     inSessionBreakTakenRef.current = false;
     moveToMode(nextMode);
@@ -183,33 +207,44 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
       return clearTimer;
     }
 
-    intervalRef.current = window.setInterval(() => {
-      setRemainingSeconds((seconds) => {
-        if (
-          mode === "focus" &&
-          shouldUseInSessionBreak(settings) &&
-          !inSessionBreakTakenRef.current &&
-          seconds <= settings.shortBreakDuration * 60 + 1
-        ) {
-          startInSessionBreak();
-          return durationForMode(settings, "short_break");
-        }
+    const tick = () => {
+      const seconds = getDeadlineRemainingSeconds();
 
-        if (seconds <= 1) {
-          clearTimer();
-          completeCurrentMode();
-          return 0;
-        }
+      if (seconds <= 0) {
+        setRemainingSeconds(0);
+        clearTimer();
+        completeCurrentMode();
+        return;
+      }
 
-        return seconds - 1;
-      });
-    }, 1000);
+      if (
+        mode === "focus" &&
+        shouldUseInSessionBreak(settings) &&
+        !inSessionBreakTakenRef.current &&
+        seconds <= settings.shortBreakDuration * 60
+      ) {
+        startInSessionBreak(seconds);
+        return;
+      }
 
-    return clearTimer;
-  }, [clearTimer, completeCurrentMode, mode, settings, startInSessionBreak, status]);
+      setRemainingSeconds(seconds);
+    };
+
+    tick();
+    intervalRef.current = window.setInterval(tick, 1000);
+    window.addEventListener("focus", tick);
+    document.addEventListener("visibilitychange", tick);
+
+    return () => {
+      window.removeEventListener("focus", tick);
+      document.removeEventListener("visibilitychange", tick);
+      clearTimer();
+    };
+  }, [clearTimer, completeCurrentMode, getDeadlineRemainingSeconds, mode, settings, startInSessionBreak, status]);
 
   useEffect(() => {
     if (status === "idle") {
+      deadlineRef.current = null;
       inSessionBreakRef.current = false;
       inSessionBreakTakenRef.current = false;
       setRemainingSeconds(durationForMode(settings, mode));
