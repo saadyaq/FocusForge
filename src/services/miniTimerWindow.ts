@@ -30,7 +30,7 @@ export async function openMiniTimerWindow(snapshot: TimerSnapshot) {
   saveMiniTimerState(snapshot);
 
   if (!isTauri()) {
-    window.open("/?mini=1", "focusforge-mini-timer", "width=360,height=430");
+    window.open("/?mini=1", "focusforge-mini-timer", "width=300,height=340");
     return;
   }
 
@@ -45,12 +45,12 @@ export async function openMiniTimerWindow(snapshot: TimerSnapshot) {
   const miniWindow = new WebviewWindow(MINI_TIMER_LABEL, {
     url: "/?mini=1",
     title: "FocusForge Timer",
-    width: 360,
-    height: 430,
-    minWidth: 320,
-    minHeight: 380,
-    resizable: false,
-    decorations: false,
+    width: 300,
+    height: 340,
+    minWidth: 260,
+    minHeight: 300,
+    resizable: true,
+    decorations: true,
     alwaysOnTop: true,
     skipTaskbar: true,
     center: true,

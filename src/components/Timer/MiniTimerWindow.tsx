@@ -36,20 +36,25 @@ export function MiniTimerWindow() {
     };
   }, []);
 
-  const close = () => {
-    void getCurrentWindow().close();
+  const close = async () => {
+    try {
+      await getCurrentWindow().close();
+    } catch (error) {
+      console.warn("Unable to close mini timer window", error);
+      window.close();
+    }
   };
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#2f333d] text-white">
-      <section className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#2f333d] p-5">
+      <section className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#2f333d] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold leading-tight">{snapshot.periodLabel}</h1>
+            <h1 className="text-base font-semibold leading-tight">{snapshot.periodLabel}</h1>
             <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-white/55">{snapshot.status}</p>
           </div>
           <button
-            className="grid h-9 w-9 place-items-center rounded-md text-white/80 transition hover:bg-white/10 hover:text-white"
+            className="grid h-8 w-8 place-items-center rounded-md text-white/80 transition hover:bg-white/10 hover:text-white"
             onClick={close}
             title="Close"
             type="button"
@@ -58,9 +63,9 @@ export function MiniTimerWindow() {
           </button>
         </div>
 
-        <div className="relative mt-5 grid flex-1 place-items-center">
-          <div className="absolute aspect-square w-[82%] rounded-full bg-white/[0.035]" />
-          <div className="absolute aspect-square w-[82%]">
+        <div className="relative mt-3 grid min-h-0 flex-1 place-items-center">
+          <div className="absolute aspect-square w-[76%] max-w-56 rounded-full bg-white/[0.035]" />
+          <div className="absolute aspect-square w-[76%] max-w-56">
             {ticks.map((tick) => {
               const angle = (tick / ticks.length) * 360;
               const isActive = tick < activeTickCount;
@@ -72,7 +77,7 @@ export function MiniTimerWindow() {
                     isActive ? "bg-[#91d7d3]" : "bg-white/8"
                   }`}
                   style={{
-                    transform: `rotate(${angle}deg) translateX(112px)`
+                    transform: `rotate(${angle}deg) translateX(min(26vw, 100px))`
                   }}
                 />
               );
@@ -80,11 +85,11 @@ export function MiniTimerWindow() {
           </div>
 
           <div className="relative text-center">
-            <div className="font-mono text-6xl font-medium leading-none tracking-normal">
+            <div className="font-mono text-5xl font-medium leading-none tracking-normal">
               {Math.ceil(snapshot.remainingSeconds / 60)}
-              <span className="ml-2 text-3xl text-white/80">min</span>
+              <span className="ml-2 text-2xl text-white/80">min</span>
             </div>
-            <p className="mt-4 font-mono text-sm text-white/45">{snapshot.formattedTime}</p>
+            <p className="mt-3 font-mono text-sm text-white/45">{snapshot.formattedTime}</p>
           </div>
         </div>
 

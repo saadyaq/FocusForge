@@ -22,6 +22,23 @@ const modes: Array<{ mode: TimerMode; label: string }> = [
 export function TimerPanel({ timer, settings, tag, onTagChange }: TimerPanelProps) {
   const circumference = 2 * Math.PI * 148;
   const dashOffset = circumference * (1 - timer.progress);
+  const openMiniTimer = () =>
+    openMiniTimerWindow({
+      mode: timer.mode,
+      modeLabel: timer.modeLabel,
+      status: timer.status,
+      remainingSeconds: timer.remainingSeconds,
+      formattedTime: timer.formattedTime,
+      progress: timer.progress,
+      periodLabel: timer.periodLabel,
+      periodIndex: timer.periodIndex,
+      totalPeriods: timer.totalPeriods
+    });
+
+  const start = () => {
+    void openMiniTimer();
+    timer.start();
+  };
 
   return (
     <section className="flex min-h-[560px] flex-col rounded-lg border border-forge-line bg-white p-5 shadow-soft dark:border-white/10 dark:bg-[#191a17]">
@@ -34,19 +51,7 @@ export function TimerPanel({ timer, settings, tag, onTagChange }: TimerPanelProp
         <div className="flex flex-wrap items-center gap-2">
           <button
             className="grid h-10 w-10 place-items-center rounded-lg border border-forge-line bg-forge-paper text-[#746f63] transition hover:bg-white hover:text-forge-ink dark:border-white/10 dark:bg-black/20 dark:text-[#b8b1a4] dark:hover:bg-white/10 dark:hover:text-white"
-            onClick={() =>
-              openMiniTimerWindow({
-                mode: timer.mode,
-                modeLabel: timer.modeLabel,
-                status: timer.status,
-                remainingSeconds: timer.remainingSeconds,
-                formattedTime: timer.formattedTime,
-                progress: timer.progress,
-                periodLabel: timer.periodLabel,
-                periodIndex: timer.periodIndex,
-                totalPeriods: timer.totalPeriods
-              })
-            }
+            onClick={openMiniTimer}
             title="Open mini timer"
             type="button"
           >
@@ -131,7 +136,7 @@ export function TimerPanel({ timer, settings, tag, onTagChange }: TimerPanelProp
           {timer.status === "running" ? (
             <IconButton label="Pause" icon={Pause} onClick={timer.pause} tone="primary" />
           ) : (
-            <IconButton label="Start" icon={Play} onClick={timer.start} tone="primary" />
+            <IconButton label="Start" icon={Play} onClick={start} tone="primary" />
           )}
           <IconButton label="Reset" icon={RotateCcw} onClick={timer.reset} />
           <IconButton label="Skip" icon={SkipForward} onClick={timer.skip} />
