@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Clock3, History, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { AppShell } from "./components/Layout/AppShell";
+import { MiniTimerWindow } from "./components/Timer/MiniTimerWindow";
 import { TimerPanel } from "./components/Timer/TimerPanel";
 import { SettingsPanel } from "./components/Timer/SettingsPanel";
 import { useSettings } from "./hooks/useSettings";
@@ -8,15 +9,46 @@ import { useSessions } from "./hooks/useSessions";
 import { useTimer } from "./hooks/useTimer";
 import { DashboardPage } from "./pages/Dashboard";
 import { HistoryPage } from "./pages/History";
+import { saveMiniTimerState } from "./services/miniTimerWindow";
 
 type View = "focus" | "dashboard" | "history" | "settings";
 
 export default function App() {
+  const isMiniWindow = new URLSearchParams(window.location.search).get("mini") === "1";
+
+  return isMiniWindow ? <MiniTimerWindow /> : <MainApp />;
+}
+
+function MainApp() {
   const [activeView, setActiveView] = useState<View>("focus");
   const [tag, setTag] = useState("Deep work");
   const { settings, updateSettings, resetSettings } = useSettings();
   const { sessions, tags, addSession, clearSessions } = useSessions();
   const timer = useTimer(settings, { tag, onSessionComplete: addSession });
+
+  useEffect(() => {
+    saveMiniTimerState({
+      mode: timer.mode,
+      modeLabel: timer.modeLabel,
+      status: timer.status,
+      remainingSeconds: timer.remainingSeconds,
+      formattedTime: timer.formattedTime,
+      progress: timer.progress,
+      periodLabel: timer.periodLabel,
+      periodIndex: timer.periodIndex,
+      totalPeriods: timer.totalPeriods
+    });
+  }, [
+    timer.formattedTime,
+    timer.mode,
+    timer.modeLabel,
+    timer.periodIndex,
+    timer.periodLabel,
+    timer.progress,
+    timer.remainingSeconds,
+    timer.status,
+    timer.totalPeriods
+  ]);
 
   const navItems = useMemo(
     () => [

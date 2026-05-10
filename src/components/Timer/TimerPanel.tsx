@@ -1,7 +1,8 @@
-import { Pause, Play, RotateCcw, SkipForward } from "lucide-react";
+import { Pause, PictureInPicture2, Play, RotateCcw, SkipForward } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Settings, TimerMode } from "../../types";
 import type { useTimer } from "../../hooks/useTimer";
+import { openMiniTimerWindow } from "../../services/miniTimerWindow";
 
 type Timer = ReturnType<typeof useTimer>;
 
@@ -27,11 +28,33 @@ export function TimerPanel({ timer, settings, tag, onTagChange }: TimerPanelProp
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-[#746f63] dark:text-[#b8b1a4]">Current mode</p>
-          <h2 className="mt-1 text-2xl font-semibold">{timer.modeLabel}</h2>
+          <h2 className="mt-1 text-2xl font-semibold">{timer.periodLabel}</h2>
         </div>
 
-        <div className="flex rounded-lg border border-forge-line bg-forge-paper p-1 dark:border-white/10 dark:bg-black/20">
-          {modes.map((item) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="grid h-10 w-10 place-items-center rounded-lg border border-forge-line bg-forge-paper text-[#746f63] transition hover:bg-white hover:text-forge-ink dark:border-white/10 dark:bg-black/20 dark:text-[#b8b1a4] dark:hover:bg-white/10 dark:hover:text-white"
+            onClick={() =>
+              openMiniTimerWindow({
+                mode: timer.mode,
+                modeLabel: timer.modeLabel,
+                status: timer.status,
+                remainingSeconds: timer.remainingSeconds,
+                formattedTime: timer.formattedTime,
+                progress: timer.progress,
+                periodLabel: timer.periodLabel,
+                periodIndex: timer.periodIndex,
+                totalPeriods: timer.totalPeriods
+              })
+            }
+            title="Open mini timer"
+            type="button"
+          >
+            <PictureInPicture2 size={18} />
+          </button>
+
+          <div className="flex rounded-lg border border-forge-line bg-forge-paper p-1 dark:border-white/10 dark:bg-black/20">
+            {modes.map((item) => (
             <button
               key={item.mode}
               className={`h-9 rounded-md px-4 text-sm font-medium transition ${
@@ -44,7 +67,8 @@ export function TimerPanel({ timer, settings, tag, onTagChange }: TimerPanelProp
             >
               {item.label}
             </button>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -99,7 +123,7 @@ export function TimerPanel({ timer, settings, tag, onTagChange }: TimerPanelProp
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Stat label="Cycles completed" value={timer.completedFocusCycles.toString()} />
-          <Stat label="Next break" value={timer.nextBreakLabel} />
+          <Stat label="Current period" value={`${timer.periodIndex} of ${timer.totalPeriods}`} />
           <Stat label="Focus length" value={`${settings.focusDuration} min`} />
         </div>
 
