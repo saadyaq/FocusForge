@@ -109,3 +109,25 @@ export async function notifyTimerComplete(settings: Settings, mode: TimerMode, n
 
   await sendBrowserNotification(message);
 }
+
+export async function notifyInSessionBreak(settings: Settings) {
+  if (settings.soundEnabled) {
+    playCompletionSound();
+  }
+
+  if (!settings.notificationsEnabled) {
+    return;
+  }
+
+  const message = {
+    title: "Break time",
+    body: `Take a ${settings.shortBreakDuration}-minute break before finishing this session.`
+  };
+
+  if (isTauri()) {
+    const sent = await sendTauriNotification(message);
+    if (sent) return;
+  }
+
+  await sendBrowserNotification(message);
+}
