@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { notifyInSessionBreak, notifyTimerComplete } from "../services/notifications";
 import type { Session, Settings, TimerMode, TimerStatus } from "../types";
 
 interface UseTimerOptions {
   tag: string;
   onSessionComplete: (session: Session) => void;
+}
+
+interface TimerPeriod {
+  mode: TimerMode;
+  durationSeconds: number;
+  label: string;
 }
 
 const modeLabels: Record<TimerMode, string> = {
@@ -32,25 +38,39 @@ function shouldUseInSessionBreak(settings: Settings) {
   return settings.focusDuration >= 60 && settings.shortBreakDuration > 0 && settings.focusDuration > settings.shortBreakDuration;
 }
 
-function focusPeriodDuration(settings: Settings, periodIndex: number) {
-  const focusMinutes = settings.focusDuration - settings.shortBreakDuration;
-  const firstPeriodSeconds = Math.floor(focusMinutes / 2) * 60;
-
-  return periodIndex === 1 ? firstPeriodSeconds : focusMinutes * 60 - firstPeriodSeconds;
-}
-
-function durationForPeriod(settings: Settings, mode: TimerMode, focusPeriodIndex: number, isSegmentedSession: boolean) {
-  if (mode === "focus" && isSegmentedSession) {
-    return focusPeriodDuration(settings, focusPeriodIndex);
+function createTimerPeriods(settings: Settings, mode: TimerMode): TimerPeriod[] {
+  if (mode !== "focus" || !shouldUseInSessionBreak(settings)) {
+    return [{ mode, durationSeconds: durationForMode(settings, mode), label: modeLabels[mode] }];
   }
 
-  return durationForMode(settings, mode);
-}
+  const idealBreakCount = Math.max(1, Math.floor(settings.focusDuration / 30) - 1);
+  const maximumBreakCount = Math.max(1, Math.floor((settings.focusDuration - 1) / settings.shortBreakDuration));
+  const breakCount = Math.min(idealBreakCount, maximumBreakCount);
+  const focusPeriodCount = breakCount + 1;
+  const focusMinutes = settings.focusDuration - breakCount * settings.shortBreakDuration;
+  const baseFocusMinutes = Math.floor(focusMinutes / focusPeriodCount);
+  const extraFocusMinutes = focusMinutes % focusPeriodCount;
+  const periods: TimerPeriod[] = [];
 
-function periodLabelFor(mode: TimerMode, focusPeriodIndex: number, isSegmentedSession: boolean) {
-  if (!isSegmentedSession) return modeLabels[mode];
-  if (mode === "short_break") return "Break";
-  return `Focus period (${focusPeriodIndex} of 2)`;
+  for (let index = 0; index < focusPeriodCount; index += 1) {
+    const focusMinutesForPeriod = baseFocusMinutes + (index >= focusPeriodCount - extraFocusMinutes ? 1 : 0);
+
+    periods.push({
+      mode: "focus",
+      durationSeconds: focusMinutesForPeriod * 60,
+      label: `Focus period (${index + 1} of ${focusPeriodCount})`
+    });
+
+    if (index < breakCount) {
+      periods.push({
+        mode: "short_break",
+        durationSeconds: settings.shortBreakDuration * 60,
+        label: `Break (${index + 1} of ${breakCount})`
+      });
+    }
+  }
+
+  return periods;
 }
 
 export function formatTime(totalSeconds: number) {
@@ -72,22 +92,19 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
   const [mode, setMode] = useState<TimerMode>("focus");
   const [status, setStatus] = useState<TimerStatus>("idle");
   const [completedFocusCycles, setCompletedFocusCycles] = useState(0);
-  const [focusPeriodIndex, setFocusPeriodIndex] = useState(1);
-  const [isSegmentedSession, setIsSegmentedSession] = useState(() => shouldUseInSessionBreak(settings));
-  const [remainingSeconds, setRemainingSeconds] = useState(() =>
-    durationForPeriod(settings, "focus", 1, shouldUseInSessionBreak(settings))
-  );
+  const [periods, setPeriods] = useState<TimerPeriod[]>(() => createTimerPeriods(settings, "focus"));
+  const [periodIndex, setPeriodIndex] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState(() => createTimerPeriods(settings, "focus")[0].durationSeconds);
   const intervalRef = useRef<number | null>(null);
   const deadlineRef = useRef<number | null>(null);
   const remainingSecondsRef = useRef(remainingSeconds);
   const startedAtRef = useRef<string | null>(null);
+  const currentPeriod = periods[periodIndex] ?? periods[0];
+  const isSegmentedSession = periods.length > 1;
 
-  const currentDuration = useMemo(
-    () => durationForPeriod(settings, mode, focusPeriodIndex, isSegmentedSession),
-    [focusPeriodIndex, isSegmentedSession, mode, settings]
-  );
+  const currentDuration = currentPeriod.durationSeconds;
   const progress = currentDuration === 0 ? 0 : 1 - remainingSeconds / currentDuration;
-  const periodLabel = periodLabelFor(mode, focusPeriodIndex, isSegmentedSession);
+  const periodLabel = currentPeriod.label;
 
   useEffect(() => {
     remainingSecondsRef.current = remainingSeconds;
@@ -111,18 +128,17 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
       clearTimer();
       deadlineRef.current = null;
 
-      const nextIsSegmentedSession = nextMode === "focus" && shouldUseInSessionBreak(settings);
-      const nextFocusPeriodIndex = 1;
-      const nextDuration = durationForPeriod(settings, nextMode, nextFocusPeriodIndex, nextIsSegmentedSession);
+      const nextPeriods = createTimerPeriods(settings, nextMode);
+      const nextPeriod = nextPeriods[0];
 
-      setIsSegmentedSession(nextIsSegmentedSession);
-      setFocusPeriodIndex(nextFocusPeriodIndex);
-      setMode(nextMode);
-      setRemainingSeconds(nextDuration);
+      setPeriods(nextPeriods);
+      setPeriodIndex(0);
+      setMode(nextPeriod.mode);
+      setRemainingSeconds(nextPeriod.durationSeconds);
       setStatus(options.autoStart ? "running" : "idle");
 
       if (options.autoStart) {
-        deadlineRef.current = Date.now() + nextDuration * 1000;
+        deadlineRef.current = Date.now() + nextPeriod.durationSeconds * 1000;
         startedAtRef.current = new Date().toISOString();
       }
     },
@@ -143,33 +159,35 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
     });
   }, [onSessionComplete, settings.focusDuration, tag]);
 
-  const startSegment = useCallback((nextMode: TimerMode, nextFocusPeriodIndex: number, nextDuration: number) => {
+  const startSegment = useCallback((nextPeriodIndex: number) => {
+    const nextPeriod = periods[nextPeriodIndex];
+    if (!nextPeriod) return;
+
     clearTimer();
-    setMode(nextMode);
-    setFocusPeriodIndex(nextFocusPeriodIndex);
-    setRemainingSeconds(nextDuration);
-    deadlineRef.current = Date.now() + nextDuration * 1000;
+    setPeriodIndex(nextPeriodIndex);
+    setMode(nextPeriod.mode);
+    setRemainingSeconds(nextPeriod.durationSeconds);
+    deadlineRef.current = Date.now() + nextPeriod.durationSeconds * 1000;
     setStatus("running");
-  }, [clearTimer]);
+  }, [clearTimer, periods]);
 
   const completeCurrentMode = useCallback(() => {
     setStatus("completed");
 
-    if (isSegmentedSession && mode === "focus" && focusPeriodIndex === 1) {
-      const breakDuration = durationForMode(settings, "short_break");
-      startSegment("short_break", 1, breakDuration);
-      void notifyInSessionBreak(settings);
+    if (isSegmentedSession && periodIndex < periods.length - 1) {
+      const nextPeriodIndex = periodIndex + 1;
+      const nextPeriod = periods[nextPeriodIndex];
+
+      startSegment(nextPeriodIndex);
+      if (nextPeriod.mode === "short_break") {
+        void notifyInSessionBreak(settings);
+      } else {
+        void notifyTimerComplete(settings, "short_break", "focus");
+      }
       return;
     }
 
-    if (isSegmentedSession && mode === "short_break") {
-      const secondFocusDuration = focusPeriodDuration(settings, 2);
-      startSegment("focus", 2, secondFocusDuration);
-      void notifyTimerComplete(settings, "short_break", "focus");
-      return;
-    }
-
-    if (isSegmentedSession && mode === "focus" && focusPeriodIndex === 2) {
+    if (isSegmentedSession) {
       saveFocusSession();
       deadlineRef.current = null;
       startedAtRef.current = null;
@@ -197,7 +215,7 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
       window.setTimeout(() => moveToMode(nextMode, { autoStart: mode === "focus" }), 650);
       return nextCycles;
     });
-  }, [focusPeriodIndex, isSegmentedSession, mode, moveToMode, saveFocusSession, settings, startSegment]);
+  }, [isSegmentedSession, mode, moveToMode, periodIndex, periods, saveFocusSession, settings, startSegment]);
 
   const start = useCallback(() => {
     if (status === "running") return;
@@ -220,11 +238,12 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
     clearTimer();
     startedAtRef.current = null;
     deadlineRef.current = null;
-    const nextIsSegmentedSession = mode === "focus" && shouldUseInSessionBreak(settings);
-    setIsSegmentedSession(nextIsSegmentedSession);
-    setFocusPeriodIndex(1);
+    const nextPeriods = createTimerPeriods(settings, mode);
+    setPeriods(nextPeriods);
+    setPeriodIndex(0);
+    setMode(nextPeriods[0].mode);
     setStatus("idle");
-    setRemainingSeconds(durationForPeriod(settings, mode, 1, nextIsSegmentedSession));
+    setRemainingSeconds(nextPeriods[0].durationSeconds);
   }, [clearTimer, mode, settings]);
 
   const skip = useCallback(() => {
@@ -275,10 +294,11 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
   useEffect(() => {
     if (status === "idle") {
       deadlineRef.current = null;
-      const nextIsSegmentedSession = mode === "focus" && shouldUseInSessionBreak(settings);
-      setIsSegmentedSession(nextIsSegmentedSession);
-      setFocusPeriodIndex(1);
-      setRemainingSeconds(durationForPeriod(settings, mode, 1, nextIsSegmentedSession));
+      const nextPeriods = createTimerPeriods(settings, mode);
+      setPeriods(nextPeriods);
+      setPeriodIndex(0);
+      setMode(nextPeriods[0].mode);
+      setRemainingSeconds(nextPeriods[0].durationSeconds);
     }
   }, [mode, settings, status]);
 
@@ -290,9 +310,8 @@ export function useTimer(settings: Settings, { tag, onSessionComplete }: UseTime
     formattedTime: formatTime(remainingSeconds),
     progress,
     periodLabel,
-    periodIndex: isSegmentedSession ? (mode === "short_break" ? 2 : focusPeriodIndex === 1 ? 1 : 3) : 1,
-    totalPeriods: isSegmentedSession ? 3 : 1,
-    focusPeriodIndex,
+    periodIndex: periodIndex + 1,
+    totalPeriods: periods.length,
     isSegmentedSession,
     completedFocusCycles,
     nextBreakLabel:

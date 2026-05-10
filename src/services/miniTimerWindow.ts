@@ -6,6 +6,9 @@ import type { TimerSnapshot } from "../types";
 const MINI_TIMER_LABEL = "mini-timer";
 const MINI_TIMER_STATE_KEY = "focusforge.miniTimerState";
 const MINI_TIMER_EVENT = "focusforge://timer-state";
+const MINI_TIMER_COMMAND_EVENT = "focusforge://timer-command";
+
+export type MiniTimerCommand = "pause" | "start";
 
 export function saveMiniTimerState(snapshot: TimerSnapshot) {
   localStorage.setItem(MINI_TIMER_STATE_KEY, JSON.stringify(snapshot));
@@ -67,4 +70,4 @@ export async function openMiniTimerWindow(snapshot: TimerSnapshot) {
   });
 }
 
-export { MINI_TIMER_EVENT, MINI_TIMER_STATE_KEY };
+export { MINI_TIMER_COMMAND_EVENT, MINI_TIMER_EVENT, MINI_TIMER_STATE_KEY };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, History, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 import { AppShell } from "./components/Layout/AppShell";
 import { MiniTimerWindow } from "./components/Timer/MiniTimerWindow";
@@ -9,7 +9,9 @@ import { useSessions } from "./hooks/useSessions";
 import { useTimer } from "./hooks/useTimer";
 import { DashboardPage } from "./pages/Dashboard";
 import { HistoryPage } from "./pages/History";
-import { saveMiniTimerState } from "./services/miniTimerWindow";
+import { MINI_TIMER_COMMAND_EVENT, saveMiniTimerState } from "./services/miniTimerWindow";
+import { listen } from "@tauri-apps/api/event";
+import type { MiniTimerCommand } from "./services/miniTimerWindow";
 
 type View = "focus" | "dashboard" | "history" | "settings";
 
@@ -25,6 +27,11 @@ function MainApp() {
   const { settings, updateSettings, resetSettings } = useSettings();
   const { sessions, tags, addSession, clearSessions } = useSessions();
   const timer = useTimer(settings, { tag, onSessionComplete: addSession });
+  const timerRef = useRef(timer);
+
+  useEffect(() => {
+    timerRef.current = timer;
+  }, [timer]);
 
   useEffect(() => {
     saveMiniTimerState({
@@ -49,6 +56,28 @@ function MainApp() {
     timer.status,
     timer.totalPeriods
   ]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    void listen<MiniTimerCommand>(MINI_TIMER_COMMAND_EVENT, (event) => {
+      const currentTimer = timerRef.current;
+
+      if (event.payload === "pause" && currentTimer.status === "running") {
+        currentTimer.pause();
+      }
+
+      if (event.payload === "start" && currentTimer.status !== "running") {
+        currentTimer.start();
+      }
+    }).then((cleanup) => {
+      unlisten = cleanup;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 
   const navItems = useMemo(
     () => [

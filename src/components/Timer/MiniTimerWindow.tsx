@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
-import { listen } from "@tauri-apps/api/event";
+import { Pause, Play, X } from "lucide-react";
+import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { MINI_TIMER_EVENT, loadMiniTimerState } from "../../services/miniTimerWindow";
+import { MINI_TIMER_COMMAND_EVENT, MINI_TIMER_EVENT, loadMiniTimerState } from "../../services/miniTimerWindow";
 import type { TimerSnapshot } from "../../types";
 
 const emptyState: TimerSnapshot = {
@@ -44,6 +44,12 @@ export function MiniTimerWindow() {
       window.close();
     }
   };
+
+  const togglePlayback = () => {
+    void emit(MINI_TIMER_COMMAND_EVENT, snapshot.status === "running" ? "pause" : "start");
+  };
+
+  const PlaybackIcon = snapshot.status === "running" ? Pause : Play;
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#2f333d] text-white">
@@ -102,6 +108,17 @@ export function MiniTimerWindow() {
               }`}
             />
           ))}
+        </div>
+
+        <div className="mb-1 flex justify-center">
+          <button
+            className="grid h-11 w-11 place-items-center rounded-full bg-[#91d7d3] text-[#1d2229] shadow-lg shadow-black/20 transition hover:bg-[#a7e7e3]"
+            onClick={togglePlayback}
+            title={snapshot.status === "running" ? "Pause" : "Play"}
+            type="button"
+          >
+            <PlaybackIcon size={19} fill={snapshot.status === "running" ? "none" : "currentColor"} />
+          </button>
         </div>
       </section>
     </main>
