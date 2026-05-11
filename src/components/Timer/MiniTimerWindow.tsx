@@ -53,10 +53,10 @@ export function MiniTimerWindow() {
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#2f333d] text-white">
-      <section className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#2f333d] p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-base font-semibold leading-tight">{snapshot.periodLabel}</h1>
+      <section className="relative flex h-screen w-screen flex-col overflow-hidden bg-[#2f333d] p-3.5">
+        <div className="flex shrink-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold leading-tight">{snapshot.periodLabel}</h1>
             <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-white/55">{snapshot.status}</p>
           </div>
           <button
@@ -69,9 +69,12 @@ export function MiniTimerWindow() {
           </button>
         </div>
 
-        <div className="relative mt-3 grid min-h-0 flex-1 place-items-center">
-          <div className="absolute aspect-square w-[76%] max-w-56 rounded-full bg-white/[0.035]" />
-          <div className="absolute aspect-square w-[76%] max-w-56">
+        <div
+          className="relative mt-2 grid shrink-0 place-items-center"
+          style={{ height: "min(52vh, 178px)", minHeight: "148px" }}
+        >
+          <div className="absolute aspect-square w-[62%] max-w-40 rounded-full bg-white/[0.035]" />
+          <div className="absolute aspect-square w-[62%] max-w-40">
             {ticks.map((tick) => {
               const angle = (tick / ticks.length) * 360;
               const isActive = tick < activeTickCount;
@@ -79,11 +82,11 @@ export function MiniTimerWindow() {
               return (
                 <span
                   key={tick}
-                  className={`absolute left-1/2 top-1/2 h-2.5 w-8 origin-[0_50%] rounded-full ${
+                  className={`absolute left-1/2 top-1/2 h-2 w-6 origin-[0_50%] rounded-full ${
                     isActive ? "bg-[#91d7d3]" : "bg-white/8"
                   }`}
                   style={{
-                    transform: `rotate(${angle}deg) translateX(min(26vw, 100px))`
+                    transform: `rotate(${angle}deg) translateX(min(19vw, 74px))`
                   }}
                 />
               );
@@ -91,15 +94,15 @@ export function MiniTimerWindow() {
           </div>
 
           <div className="relative text-center">
-            <div className="font-mono text-5xl font-medium leading-none tracking-normal">
+            <div className="font-mono text-4xl font-medium leading-none tracking-normal">
               {Math.ceil(snapshot.remainingSeconds / 60)}
-              <span className="ml-2 text-2xl text-white/80">min</span>
+              <span className="ml-1.5 text-xl text-white/80">min</span>
             </div>
-            <p className="mt-3 font-mono text-sm text-white/45">{snapshot.formattedTime}</p>
+            <p className="mt-2 font-mono text-sm text-white/45">{snapshot.formattedTime}</p>
           </div>
         </div>
 
-        <div className="mb-2 flex justify-center gap-2">
+        <div className="mt-auto flex shrink-0 justify-center gap-2 pb-2">
           {Array.from({ length: snapshot.totalPeriods }, (_, index) => (
             <span
               key={index}
@@ -110,9 +113,9 @@ export function MiniTimerWindow() {
           ))}
         </div>
 
-        <div className="mb-1 flex justify-center">
+        <div className="flex shrink-0 justify-center pb-1">
           <button
-            className="grid h-11 w-11 place-items-center rounded-full bg-[#91d7d3] text-[#1d2229] shadow-lg shadow-black/20 transition hover:bg-[#a7e7e3]"
+            className="grid h-10 w-10 place-items-center rounded-full bg-[#91d7d3] text-[#1d2229] shadow-lg shadow-black/20 transition hover:bg-[#a7e7e3]"
             onClick={togglePlayback}
             title={snapshot.status === "running" ? "Pause" : "Play"}
             type="button"
